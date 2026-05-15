@@ -8,7 +8,7 @@ export const DEFAULT_SETTINGS: TaggerSettings = {
 	mySetting: 'default'
 }
 
-export class SampleSettingTab extends PluginSettingTab {
+export class TaggerSettingTab extends PluginSettingTab {
 	plugin: Tagger;
 
 	constructor(app: App, plugin: Tagger) {
