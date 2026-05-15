@@ -1,10 +1,10 @@
 import {App, PluginSettingTab, Setting} from "obsidian";
 import Tagger from "./main";
-export interface MyPluginSettings {
+export interface TaggerSettings {
 	mySetting: string;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
+export const DEFAULT_SETTINGS: TaggerSettings = {
 	mySetting: 'default'
 }
 
