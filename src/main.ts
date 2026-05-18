@@ -66,7 +66,7 @@ export default class Tagger extends Plugin {
 		});
 
 		// When registering intervals, this function will automatically clear the interval when this plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		//this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 
 	}
 
