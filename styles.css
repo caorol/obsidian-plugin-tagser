@@ -1,8 +1,9 @@
-/*
+.tagger-note-name {
+	font-size: var(--font-ui-medium);
+	font-weight: var(--font-semibold);
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.tagger-tags-hint {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
