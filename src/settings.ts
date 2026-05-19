@@ -1,12 +1,15 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
+import { DEFAULT_TAGS_PROPERTY_KEY } from "./constants";
 import Tagger from "./main";
+
 export interface TaggerSettings {
-	mySetting: string;
+	/** frontmatter でタグ一覧を読み書きするプロパティ名 */
+	tagsPropertyKey: string;
 }
 
 export const DEFAULT_SETTINGS: TaggerSettings = {
-	mySetting: 'default'
-}
+	tagsPropertyKey: DEFAULT_TAGS_PROPERTY_KEY,
+};
 
 export class TaggerSettingTab extends PluginSettingTab {
 	plugin: Tagger;
@@ -17,19 +20,24 @@ export class TaggerSettingTab extends PluginSettingTab {
 	}
 
 	display(): void {
-		const {containerEl} = this;
+		const { containerEl } = this;
 
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName("Tags property key")
+			.setDesc(
+				`Frontmatter key that holds your tag list. Leave blank to use ${DEFAULT_TAGS_PROPERTY_KEY}.`,
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("")
+					.setValue(this.plugin.settings.tagsPropertyKey)
+					.onChange(async (value) => {
+						this.plugin.settings.tagsPropertyKey = value;
+						await this.plugin.saveSettings();
+						this.plugin.refreshTagsViews();
+					}),
+			);
 	}
 }

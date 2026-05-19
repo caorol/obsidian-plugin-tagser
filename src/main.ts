@@ -1,4 +1,4 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin, WorkspaceLeaf} from 'obsidian';
+import {MarkdownView, Plugin, WorkspaceLeaf} from 'obsidian';
 import {DEFAULT_SETTINGS, TaggerSettings, TaggerSettingTab} from "./settings";
 import {TAGGER_TAGS_VIEW_TYPE, TagsView} from "./views/TagsView";
 
@@ -14,54 +14,15 @@ export default class Tagger extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
 		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
 		const statusBarItemEl = this.addStatusBarItem();
 		statusBarItemEl.setText('Status bar text');
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new TaggerModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new TaggerModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			}
-		});
-
-		this.registerView(TAGGER_TAGS_VIEW_TYPE, (leaf: WorkspaceLeaf) => new TagsView(leaf));
+		this.registerView(
+			TAGGER_TAGS_VIEW_TYPE,
+			(leaf: WorkspaceLeaf) =>
+				new TagsView(leaf, () => this.settings.tagsPropertyKey),
+		);
 
 		this.registerEvent(
 			this.app.workspace.on('file-open', () => {
@@ -90,7 +51,18 @@ export default class Tagger extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<TaggerSettings>);
+		const raw = (await this.loadData()) as Partial<TaggerSettings> & {
+			mySetting?: string;
+		};
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, raw);
+		// 旧キー mySetting からの移行
+		if (
+			raw.tagsPropertyKey === undefined &&
+			typeof raw.mySetting === "string" &&
+			raw.mySetting.trim() !== ""
+		) {
+			this.settings.tagsPropertyKey = raw.mySetting.trim();
+		}
 	}
 
 	async saveSettings() {
@@ -170,7 +142,8 @@ export default class Tagger extends Plugin {
 		ws.setActiveLeaf(leafToRestore, {focus: true});
 	}
 
-	private refreshTagsViews(): void {
+	/** 設定変更後など、開いているタグパネルを再描画する */
+	refreshTagsViews(): void {
 		// getLeavesOfType() は配列を返すので、for...of でループする
 		// 実際には 1 つのタグパネルしか開いていないので、1 回のループで十分
 		// ゼロの要素の配列をループするのは安全なので、forEach ではなく for...of を使用
@@ -181,21 +154,5 @@ export default class Tagger extends Plugin {
 				view.refresh();
 			}
 		}
-	}
-}
-
-class TaggerModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
 	}
 }

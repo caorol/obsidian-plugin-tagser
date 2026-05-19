@@ -1,0 +1,5 @@
+node_modules
+.DS_Store
+
+# 誤ってリポジトリ直下に置かれたプラグイン設定のコピー（実行時は vault 側の data.json を使う）
+/data.json

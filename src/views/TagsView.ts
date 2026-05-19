@@ -1,4 +1,5 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
+import { DEFAULT_TAGS_PROPERTY_KEY } from "../constants";
 
 export const TAGGER_TAGS_VIEW_TYPE = "tagger-tags";
 
@@ -24,6 +25,13 @@ function normalizeTags(raw: unknown): string[] {
 			.filter(Boolean);
 	}
 	return [];
+}
+
+/** 表示・編集インデックス整合のため、タグを昇順にそろえる（数値っぽい部分も考慮） */
+function sortTagsAscending(tags: string[]): string[] {
+	return [...tags].sort((a, b) =>
+		a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+	);
 }
 
 function formatPropertyValue(value: unknown): string {
@@ -53,8 +61,17 @@ function formatPropertyValue(value: unknown): string {
 }
 
 export class TagsView extends ItemView {
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(
+		leaf: WorkspaceLeaf,
+		private readonly getTagsPropertyKey: () => string,
+	) {
 		super(leaf);
+	}
+
+	/** 設定値をトリムし、空なら既定キー（{@link DEFAULT_TAGS_PROPERTY_KEY}） */
+	private resolvedTagsKey(): string {
+		const k = this.getTagsPropertyKey().trim();
+		return k === "" ? DEFAULT_TAGS_PROPERTY_KEY : k;
 	}
 
 	getViewType(): string {
@@ -67,15 +84,27 @@ export class TagsView extends ItemView {
 
 	private bodyEl: HTMLElement | null = null;
 
+	/** `refresh` で表示中のノート（タグ編集の保存先） */
+	private displayedFile: TFile | null = null;
+
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
 		this.contentEl.addClass("tagger-view-root");
 		this.bodyEl = this.contentEl.createDiv({ cls: "tagger-tags-body" });
+
+		this.registerDomEvent(this.bodyEl, "click", (e: MouseEvent) => {
+			void this.onTagsValueClick(e);
+		});
+		this.registerDomEvent(this.bodyEl, "keydown", (e: KeyboardEvent) => {
+			this.onTagEditKeydown(e);
+		});
+
 		this.refresh();
 	}
 
 	async onClose(): Promise<void> {
 		this.bodyEl = null;
+		this.displayedFile = null;
 		this.contentEl.empty();
 	}
 
@@ -84,6 +113,7 @@ export class TagsView extends ItemView {
 			return;
 		}
 		this.bodyEl.empty();
+		this.displayedFile = null;
 
 		const currentFile = this.app.workspace.getActiveFile();
 		if (!currentFile || currentFile.extension !== "md") {
@@ -93,6 +123,8 @@ export class TagsView extends ItemView {
 			});
 			return;
 		}
+
+		this.displayedFile = currentFile;
 
 		this.bodyEl.createEl("h1", {
 			text: currentFile.basename,
@@ -112,7 +144,11 @@ export class TagsView extends ItemView {
 
 		const propsWrap = panel.createDiv({ cls: "tagger-properties" });
 
-		const keys = fm ? Object.keys(fm).filter((k) => k !== "tags") : [];
+		const tagsKey = this.resolvedTagsKey();
+
+		const keys = fm
+			? Object.keys(fm).filter((k) => k !== tagsKey)
+			: [];
 		if (fm && keys.length > 0) {
 			for (const key of keys) {
 				const row = propsWrap.createDiv({ cls: "tagger-prop-row" });
@@ -128,22 +164,243 @@ export class TagsView extends ItemView {
 			}
 		}
 
-		const tags = normalizeTags(fm?.tags);
+		const tags = sortTagsAscending(normalizeTags(fm?.[tagsKey]));
 		const tagsRow = propsWrap.createDiv({
 			cls: "tagger-prop-row tagger-prop-row--tags",
 		});
 		tagsRow.createSpan({
-			text: "tags",
+			text: tagsKey,
 			cls: "tagger-prop-name tagger-prop-key",
 		});
 		const tagsValue = tagsRow.createSpan({
 			cls: "tagger-prop-value tagger-tags-value",
 		});
-		for (const tag of tags) {
-			tagsValue.createSpan({
+		for (let i = 0; i < tags.length; i++) {
+			const tag = tags[i];
+			const badge = tagsValue.createSpan({ cls: "tagger-tag-badge" });
+			badge.dataset.tagIndex = String(i);
+			badge.createSpan({
 				text: tag,
-				cls: "tagger-tag-badge",
+				cls: "tagger-tag-badge-label",
 			});
+			badge.createEl("button", {
+				type: "button",
+				cls: "tagger-tag-badge-remove",
+				text: "×",
+				attr: {
+					type: "button",
+					"aria-label": "Remove tag",
+				},
+			});
+		}
+		tagsValue.createSpan({
+			cls: "tagger-tags-value-tail",
+			attr: {
+				"aria-label": "Add tag",
+			},
+		});
+	}
+
+	private onTagEditKeydown(e: KeyboardEvent): void {
+		const el = e.target;
+		if (!(el instanceof HTMLInputElement) || !el.matches(".tagger-tag-edit-input")) {
+			return;
+		}
+
+		if (el.matches(".tagger-tag-add-input")) {
+			if (e.key === "Enter") {
+				e.preventDefault();
+				void this.commitNewTag(el);
+			} else if (e.key === "Escape") {
+				e.preventDefault();
+				this.cancelNewTag(el);
+			}
+			return;
+		}
+
+		if (e.key === "Enter") {
+			e.preventDefault();
+			void this.commitTagEdit(el);
+		} else if (e.key === "Escape") {
+			e.preventDefault();
+			this.cancelTagEdit();
+		}
+	}
+
+	private async onTagsValueClick(e: MouseEvent): Promise<void> {
+		const target = e.target as HTMLElement | null;
+		if (!target) {
+			return;
+		}
+
+		const removeBtn = target.closest(".tagger-tag-badge-remove");
+		if (removeBtn) {
+			e.preventDefault();
+			e.stopPropagation();
+			const badge = removeBtn.closest(".tagger-tag-badge");
+			const idx = Number.parseInt(badge?.getAttribute("data-tag-index") ?? "", 10);
+			if (Number.isFinite(idx)) {
+				await this.removeTagAt(idx);
+			}
+			return;
+		}
+
+		const label = target.closest(".tagger-tag-badge-label");
+		if (label) {
+			const badgeEl = label.closest(".tagger-tag-badge");
+			if (!(badgeEl instanceof HTMLElement)) {
+				return;
+			}
+			const idx = Number.parseInt(badgeEl.dataset.tagIndex ?? "", 10);
+			if (!Number.isFinite(idx)) {
+				return;
+			}
+
+			const text = label.textContent ?? "";
+			this.beginTagEdit(badgeEl, idx, text);
+			return;
+		}
+
+		const tail = target.closest(".tagger-tags-value-tail");
+		if (tail instanceof HTMLElement) {
+			if (!tail.querySelector(".tagger-tag-edit-input")) {
+				this.beginAddTag(tail);
+			}
+		}
+	}
+
+	private beginAddTag(tail: HTMLElement): void {
+		if (this.bodyEl?.querySelector(".tagger-tag-edit-input")) {
+			return;
+		}
+
+		tail.empty();
+		const input = tail.createEl("input", {
+			type: "text",
+			cls: "tagger-tag-edit-input tagger-tag-add-input",
+		});
+		if (!(input instanceof HTMLInputElement)) {
+			return;
+		}
+
+		requestAnimationFrame(() => {
+			input.focus();
+		});
+	}
+
+	private cancelNewTag(input: HTMLInputElement): void {
+		const tail = input.closest(".tagger-tags-value-tail");
+		tail?.empty();
+	}
+
+	private async commitNewTag(input: HTMLInputElement): Promise<void> {
+		const file = this.displayedFile;
+		if (!file) {
+			return;
+		}
+
+		const newVal = input.value.trim();
+		if (newVal === "") {
+			this.cancelNewTag(input);
+			return;
+		}
+
+		try {
+			const tagsKey = this.resolvedTagsKey();
+			await this.app.fileManager.processFrontMatter(file, (fm) => {
+				const fmRec = fm as Record<string, unknown>;
+				fmRec[tagsKey] = sortTagsAscending([
+					...normalizeTags(fmRec[tagsKey]),
+					newVal,
+				]);
+			});
+			this.refresh();
+		} catch (err) {
+			console.error("[tagger] Failed to add tag", err);
+		}
+	}
+
+	private beginTagEdit(badge: HTMLElement, index: number, tagText: string): void {
+		if (this.bodyEl?.querySelector(".tagger-tag-edit-input")) {
+			return;
+		}
+
+		badge.empty();
+		badge.dataset.tagIndex = String(index);
+		const input = badge.createEl("input", {
+			type: "text",
+			cls: "tagger-tag-edit-input",
+		});
+		if (!(input instanceof HTMLInputElement)) {
+			return;
+		}
+		input.value = tagText;
+
+		requestAnimationFrame(() => {
+			input.focus();
+			input.select();
+		});
+	}
+
+	private cancelTagEdit(): void {
+		this.refresh();
+	}
+
+	private async commitTagEdit(input: HTMLInputElement): Promise<void> {
+		const badgeEl = input.closest(".tagger-tag-badge");
+		const file = this.displayedFile;
+		if (!(badgeEl instanceof HTMLElement) || !file) {
+			return;
+		}
+
+		const index = Number.parseInt(badgeEl.dataset.tagIndex ?? "", 10);
+		if (!Number.isFinite(index)) {
+			return;
+		}
+
+		const newVal = input.value.trim();
+
+		try {
+			const tagsKey = this.resolvedTagsKey();
+			await this.app.fileManager.processFrontMatter(file, (fm) => {
+				const fmRec = fm as Record<string, unknown>;
+				const t = sortTagsAscending([...normalizeTags(fmRec[tagsKey])]);
+				if (index < 0 || index >= t.length) {
+					return;
+				}
+				if (newVal === "") {
+					t.splice(index, 1);
+				} else {
+					t[index] = newVal;
+				}
+				fmRec[tagsKey] = sortTagsAscending(t);
+			});
+			this.refresh();
+		} catch (err) {
+			console.error("[tagger] Failed to update tags", err);
+		}
+	}
+
+	private async removeTagAt(index: number): Promise<void> {
+		const file = this.displayedFile;
+		if (!file) {
+			return;
+		}
+
+		try {
+			const tagsKey = this.resolvedTagsKey();
+			await this.app.fileManager.processFrontMatter(file, (fm) => {
+				const fmRec = fm as Record<string, unknown>;
+				const t = sortTagsAscending([...normalizeTags(fmRec[tagsKey])]);
+				if (index < 0 || index >= t.length) {
+					return;
+				}
+				t.splice(index, 1);
+				fmRec[tagsKey] = sortTagsAscending(t);
+			});
+			this.refresh();
+		} catch (err) {
+			console.error("[tagger] Failed to remove tag", err);
 		}
 	}
 }

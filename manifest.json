@@ -3,9 +3,9 @@
 	"name": "Tagger",
 	"version": "1.0.0",
 	"minAppVersion": "1.7.2",
-	"description": "formatted tags for Obsidian",
+	"description": "formatted tags tag value for Obsidian",
 	"author": "caorol",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"authorUrl": "",
+	"fundingUrl": "",
 	"isDesktopOnly": false
 }
