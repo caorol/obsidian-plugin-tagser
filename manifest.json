@@ -3,9 +3,9 @@
 	"name": "Tagger",
 	"version": "1.0.0",
 	"minAppVersion": "1.7.2",
-	"description": "formatted tags tag value for Obsidian",
+	"description": "A plugin to edit the value of the `tags` property in Obsidian",
 	"author": "caorol",
-	"authorUrl": "",
-	"fundingUrl": "",
+	"authorUrl": "https://github.com/caorol/",
+	"fundingUrl": "https://github.com/caorol/obsidian-plugin-tagger",
 	"isDesktopOnly": false
 }
