@@ -1,5 +1,5 @@
 {
-	"id": "tagger",
+	"id": "tagger-plugin",
 	"name": "Tagger",
 	"version": "1.0.0",
 	"minAppVersion": "1.7.2",
