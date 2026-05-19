@@ -1,20 +1,20 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import { DEFAULT_TAGS_PROPERTY_KEY } from "./constants";
-import Tagger from "./main";
+import type Tagser from "./main";
 
-export interface TaggerSettings {
+export interface TagserSettings {
 	/** frontmatter でタグ一覧を読み書きするプロパティ名 */
 	tagsPropertyKey: string;
 }
 
-export const DEFAULT_SETTINGS: TaggerSettings = {
+export const DEFAULT_SETTINGS: TagserSettings = {
 	tagsPropertyKey: DEFAULT_TAGS_PROPERTY_KEY,
 };
 
-export class TaggerSettingTab extends PluginSettingTab {
-	plugin: Tagger;
+export class TagserSettingTab extends PluginSettingTab {
+	plugin: Tagser;
 
-	constructor(app: App, plugin: Tagger) {
+	constructor(app: App, plugin: Tagser) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}

@@ -1,12 +1,12 @@
 import {MarkdownView, Plugin, WorkspaceLeaf} from 'obsidian';
-import {DEFAULT_SETTINGS, TaggerSettings, TaggerSettingTab} from "./settings";
-import {TAGGER_TAGS_VIEW_TYPE, TagsView} from "./views/TagsView";
+import {DEFAULT_SETTINGS, TagserSettings, TagserSettingTab} from "./settings";
+import {TAGSER_TAGS_VIEW_TYPE, TagsView} from "./views/TagsView";
 
 // Remember to rename these classes and interfaces!
 
-export default class Tagger extends Plugin {
-	// TaggerSettings 型の settings フィールドを宣言
-	settings: TaggerSettings;
+export default class Tagser extends Plugin {
+	// TagserSettings 型の settings フィールドを宣言
+	settings: TagserSettings;
 	// activatingTagsSidebar() が実行中かどうかを管理するフィールド
 	// 同時に複数のタグパネルを開くことを防ぐために使用
 	private _activatingTagsSidebar = false;
@@ -19,7 +19,7 @@ export default class Tagger extends Plugin {
 		statusBarItemEl.setText('Status bar text');
 
 		this.registerView(
-			TAGGER_TAGS_VIEW_TYPE,
+			TAGSER_TAGS_VIEW_TYPE,
 			(leaf: WorkspaceLeaf) =>
 				new TagsView(leaf, () => this.settings.tagsPropertyKey),
 		);
@@ -38,7 +38,7 @@ export default class Tagger extends Plugin {
 		);
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new TaggerSettingTab(this.app, this));
+		this.addSettingTab(new TagserSettingTab(this.app, this));
 
 		// サンプルの document クリックはエディタのフォーカス調査の妨げになるので削除
 
@@ -51,7 +51,8 @@ export default class Tagger extends Plugin {
 	}
 
 	async loadSettings() {
-		const raw = (await this.loadData()) as Partial<TaggerSettings> & {
+		// loadData() はデータが無いと null を返すことがあるため、常にオブジェクトに正規化する
+		const raw = ((await this.loadData()) ?? {}) as Partial<TagserSettings> & {
 			mySetting?: string;
 		};
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, raw);
@@ -95,14 +96,14 @@ export default class Tagger extends Plugin {
 			let leaf: WorkspaceLeaf;
 
 			// ワークスペース全体から、タグパネルの Leaf を取得
-			const existingLeaves = ws.getLeavesOfType(TAGGER_TAGS_VIEW_TYPE);
+			const existingLeaves = ws.getLeavesOfType(TAGSER_TAGS_VIEW_TYPE);
 			// タグパネルの Leaf が存在する場合
 			if (existingLeaves.length > 0) {
 				// 最初の Leaf を取得
 				leaf = existingLeaves[0]!;
 			} else if (typeof ws.ensureSideLeaf === 'function') {
 				// タグパネルの Leaf が存在しない場合、右サイドバーにタグパネルを作成
-				leaf = await ws.ensureSideLeaf(TAGGER_TAGS_VIEW_TYPE, 'right', {
+				leaf = await ws.ensureSideLeaf(TAGSER_TAGS_VIEW_TYPE, 'right', {
 					active: false,
 					reveal: false,
 				});
@@ -113,7 +114,7 @@ export default class Tagger extends Plugin {
 				if (!right) {
 					return;
 				}
-				await right.setViewState({type: TAGGER_TAGS_VIEW_TYPE, active: false});
+				await right.setViewState({type: TAGSER_TAGS_VIEW_TYPE, active: false});
 				leaf = right;
 			}
 
@@ -147,7 +148,7 @@ export default class Tagger extends Plugin {
 		// getLeavesOfType() は配列を返すので、for...of でループする
 		// 実際には 1 つのタグパネルしか開いていないので、1 回のループで十分
 		// ゼロの要素の配列をループするのは安全なので、forEach ではなく for...of を使用
-		for (const leaf of this.app.workspace.getLeavesOfType(TAGGER_TAGS_VIEW_TYPE)) {
+		for (const leaf of this.app.workspace.getLeavesOfType(TAGSER_TAGS_VIEW_TYPE)) {
 			const view = leaf.view;
 			// 取得した view が TagsView のインスタンスであれば、refresh() を呼ぶ
 			if (view instanceof TagsView) {

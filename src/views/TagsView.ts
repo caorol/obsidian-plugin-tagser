@@ -1,7 +1,7 @@
 import { ItemView, TFile, WorkspaceLeaf } from "obsidian";
 import { DEFAULT_TAGS_PROPERTY_KEY } from "../constants";
 
-export const TAGGER_TAGS_VIEW_TYPE = "tagger-tags";
+export const TAGSER_TAGS_VIEW_TYPE = "tagser-tags";
 
 /** プロパティ行を必ず1行に収める（YAML の複数行文字・改行を潰す） */
 function collapseForSingleLine(s: string): string {
@@ -75,11 +75,11 @@ export class TagsView extends ItemView {
 	}
 
 	getViewType(): string {
-		return TAGGER_TAGS_VIEW_TYPE;
+		return TAGSER_TAGS_VIEW_TYPE;
 	}
 
 	getDisplayText(): string {
-		return "Tagger";
+		return "Tagser";
 	}
 
 	private bodyEl: HTMLElement | null = null;
@@ -89,14 +89,17 @@ export class TagsView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.contentEl.empty();
-		this.contentEl.addClass("tagger-view-root");
-		this.bodyEl = this.contentEl.createDiv({ cls: "tagger-tags-body" });
+		this.contentEl.addClass("tagser-view-root");
+		this.bodyEl = this.contentEl.createDiv({ cls: "tagser-tags-body" });
 
 		this.registerDomEvent(this.bodyEl, "click", (e: MouseEvent) => {
 			void this.onTagsValueClick(e);
 		});
 		this.registerDomEvent(this.bodyEl, "keydown", (e: KeyboardEvent) => {
 			this.onTagEditKeydown(e);
+		});
+		this.registerDomEvent(this.bodyEl, "focusout", (e: FocusEvent) => {
+			void this.onTagEditFocusOut(e);
 		});
 
 		this.refresh();
@@ -119,7 +122,7 @@ export class TagsView extends ItemView {
 		if (!currentFile || currentFile.extension !== "md") {
 			this.bodyEl.createDiv({
 				text: "Open a Markdown note.",
-				cls: "tagger-tags-hint",
+				cls: "tagser-tags-hint",
 			});
 			return;
 		}
@@ -128,21 +131,21 @@ export class TagsView extends ItemView {
 
 		this.bodyEl.createEl("h1", {
 			text: currentFile.basename,
-			cls: "tagger-note-name",
+			cls: "tagser-note-name",
 		});
-		this.bodyEl.createEl("hr", { cls: "tagger-note-divider" });
+		this.bodyEl.createEl("hr", { cls: "tagser-note-divider" });
 
 		const fm = this.app.metadataCache.getFileCache(currentFile)?.frontmatter as
 			| Record<string, unknown>
 			| undefined;
 
-		const panel = this.bodyEl.createDiv({ cls: "tagger-properties-panel" });
+		const panel = this.bodyEl.createDiv({ cls: "tagser-properties-panel" });
 		panel.createDiv({
 			text: "Properties",
-			cls: "tagger-properties-header",
+			cls: "tagser-properties-header",
 		});
 
-		const propsWrap = panel.createDiv({ cls: "tagger-properties" });
+		const propsWrap = panel.createDiv({ cls: "tagser-properties" });
 
 		const tagsKey = this.resolvedTagsKey();
 
@@ -151,41 +154,41 @@ export class TagsView extends ItemView {
 			: [];
 		if (fm && keys.length > 0) {
 			for (const key of keys) {
-				const row = propsWrap.createDiv({ cls: "tagger-prop-row" });
+				const row = propsWrap.createDiv({ cls: "tagser-prop-row" });
 				row.createSpan({
 					text: collapseForSingleLine(key),
-					cls: "tagger-prop-name tagger-prop-key",
+					cls: "tagser-prop-name tagser-prop-key",
 				});
 				const rawVal = fm[key];
 				row.createSpan({
 					text: collapseForSingleLine(formatPropertyValue(rawVal)),
-					cls: "tagger-prop-value",
+					cls: "tagser-prop-value",
 				});
 			}
 		}
 
 		const tags = sortTagsAscending(normalizeTags(fm?.[tagsKey]));
 		const tagsRow = propsWrap.createDiv({
-			cls: "tagger-prop-row tagger-prop-row--tags",
+			cls: "tagser-prop-row tagser-prop-row--tags",
 		});
 		tagsRow.createSpan({
 			text: tagsKey,
-			cls: "tagger-prop-name tagger-prop-key",
+			cls: "tagser-prop-name tagser-prop-key",
 		});
 		const tagsValue = tagsRow.createSpan({
-			cls: "tagger-prop-value tagger-tags-value",
+			cls: "tagser-prop-value tagser-tags-value",
 		});
 		for (let i = 0; i < tags.length; i++) {
 			const tag = tags[i];
-			const badge = tagsValue.createSpan({ cls: "tagger-tag-badge" });
+			const badge = tagsValue.createSpan({ cls: "tagser-tag-badge" });
 			badge.dataset.tagIndex = String(i);
 			badge.createSpan({
 				text: tag,
-				cls: "tagger-tag-badge-label",
+				cls: "tagser-tag-badge-label",
 			});
 			badge.createEl("button", {
 				type: "button",
-				cls: "tagger-tag-badge-remove",
+				cls: "tagser-tag-badge-remove",
 				text: "×",
 				attr: {
 					type: "button",
@@ -194,7 +197,7 @@ export class TagsView extends ItemView {
 			});
 		}
 		tagsValue.createSpan({
-			cls: "tagger-tags-value-tail",
+			cls: "tagser-tags-value-tail",
 			attr: {
 				"aria-label": "Add tag",
 			},
@@ -203,11 +206,11 @@ export class TagsView extends ItemView {
 
 	private onTagEditKeydown(e: KeyboardEvent): void {
 		const el = e.target;
-		if (!(el instanceof HTMLInputElement) || !el.matches(".tagger-tag-edit-input")) {
+		if (!(el instanceof HTMLInputElement) || !el.matches(".tagser-tag-edit-input")) {
 			return;
 		}
 
-		if (el.matches(".tagger-tag-add-input")) {
+		if (el.matches(".tagser-tag-add-input")) {
 			if (e.key === "Enter") {
 				e.preventDefault();
 				void this.commitNewTag(el);
@@ -227,17 +230,45 @@ export class TagsView extends ItemView {
 		}
 	}
 
+	/** 編集・追加の入力からフォーカスが外れたら確定（× などのクリックを先に処理するよう 1 ティック遅延） */
+	private onTagEditFocusOut(e: FocusEvent): void {
+		const el = e.target;
+		if (!(el instanceof HTMLInputElement) || !el.matches(".tagser-tag-edit-input")) {
+			return;
+		}
+
+		window.setTimeout(() => {
+			if (!document.contains(el)) {
+				return;
+			}
+			if (document.activeElement === el) {
+				return;
+			}
+			if (el.matches(".tagser-tag-add-input")) {
+				void this.commitNewTag(el);
+			} else {
+				void this.commitTagEdit(el);
+			}
+		}, 0);
+	}
+
 	private async onTagsValueClick(e: MouseEvent): Promise<void> {
-		const target = e.target as HTMLElement | null;
+		const rawTarget = e.target;
+		const target: HTMLElement | null =
+			rawTarget instanceof HTMLElement
+				? rawTarget
+				: rawTarget instanceof Node
+					? rawTarget.parentElement
+					: null;
 		if (!target) {
 			return;
 		}
 
-		const removeBtn = target.closest(".tagger-tag-badge-remove");
+		const removeBtn = target.closest(".tagser-tag-badge-remove");
 		if (removeBtn) {
 			e.preventDefault();
 			e.stopPropagation();
-			const badge = removeBtn.closest(".tagger-tag-badge");
+			const badge = removeBtn.closest(".tagser-tag-badge");
 			const idx = Number.parseInt(badge?.getAttribute("data-tag-index") ?? "", 10);
 			if (Number.isFinite(idx)) {
 				await this.removeTagAt(idx);
@@ -245,9 +276,9 @@ export class TagsView extends ItemView {
 			return;
 		}
 
-		const label = target.closest(".tagger-tag-badge-label");
+		const label = target.closest(".tagser-tag-badge-label");
 		if (label) {
-			const badgeEl = label.closest(".tagger-tag-badge");
+			const badgeEl = label.closest(".tagser-tag-badge");
 			if (!(badgeEl instanceof HTMLElement)) {
 				return;
 			}
@@ -261,27 +292,37 @@ export class TagsView extends ItemView {
 			return;
 		}
 
-		const tail = target.closest(".tagger-tags-value-tail");
-		if (tail instanceof HTMLElement) {
-			if (!tail.querySelector(".tagger-tag-edit-input")) {
-				this.beginAddTag(tail);
+		// tail が空だと幅 0 になり、クリックが親の値エリアに落ちる。バッジ外の値エリアクリックでも追加を開く
+		const tagsValueEl = target.closest(
+			".tagser-prop-row--tags .tagser-prop-value",
+		);
+		if (tagsValueEl instanceof HTMLElement && !target.closest(".tagser-tag-badge")) {
+			const tailEl = tagsValueEl.querySelector(
+				":scope > .tagser-tags-value-tail",
+			);
+			if (
+				tailEl instanceof HTMLElement &&
+				!tailEl.querySelector(".tagser-tag-edit-input")
+			) {
+				this.beginAddTag(tailEl);
 			}
 		}
 	}
 
 	private beginAddTag(tail: HTMLElement): void {
-		if (this.bodyEl?.querySelector(".tagger-tag-edit-input")) {
+		if (this.bodyEl?.querySelector(".tagser-tag-edit-input")) {
 			return;
 		}
 
 		tail.empty();
 		const input = tail.createEl("input", {
 			type: "text",
-			cls: "tagger-tag-edit-input tagger-tag-add-input",
+			cls: "tagser-tag-edit-input tagser-tag-add-input",
 		});
 		if (!(input instanceof HTMLInputElement)) {
 			return;
 		}
+		input.size = 5;
 
 		requestAnimationFrame(() => {
 			input.focus();
@@ -289,7 +330,7 @@ export class TagsView extends ItemView {
 	}
 
 	private cancelNewTag(input: HTMLInputElement): void {
-		const tail = input.closest(".tagger-tags-value-tail");
+		const tail = input.closest(".tagser-tags-value-tail");
 		tail?.empty();
 	}
 
@@ -316,12 +357,12 @@ export class TagsView extends ItemView {
 			});
 			this.refresh();
 		} catch (err) {
-			console.error("[tagger] Failed to add tag", err);
+			console.error("[Tagser] Failed to add tag", err);
 		}
 	}
 
 	private beginTagEdit(badge: HTMLElement, index: number, tagText: string): void {
-		if (this.bodyEl?.querySelector(".tagger-tag-edit-input")) {
+		if (this.bodyEl?.querySelector(".tagser-tag-edit-input")) {
 			return;
 		}
 
@@ -329,12 +370,13 @@ export class TagsView extends ItemView {
 		badge.dataset.tagIndex = String(index);
 		const input = badge.createEl("input", {
 			type: "text",
-			cls: "tagger-tag-edit-input",
+			cls: "tagser-tag-edit-input",
 		});
 		if (!(input instanceof HTMLInputElement)) {
 			return;
 		}
 		input.value = tagText;
+		input.size = Math.max(3, Math.min(tagText.length + 2, 48));
 
 		requestAnimationFrame(() => {
 			input.focus();
@@ -347,7 +389,7 @@ export class TagsView extends ItemView {
 	}
 
 	private async commitTagEdit(input: HTMLInputElement): Promise<void> {
-		const badgeEl = input.closest(".tagger-tag-badge");
+		const badgeEl = input.closest(".tagser-tag-badge");
 		const file = this.displayedFile;
 		if (!(badgeEl instanceof HTMLElement) || !file) {
 			return;
@@ -377,7 +419,7 @@ export class TagsView extends ItemView {
 			});
 			this.refresh();
 		} catch (err) {
-			console.error("[tagger] Failed to update tags", err);
+			console.error("[Tagser] Failed to update tags", err);
 		}
 	}
 
@@ -400,7 +442,7 @@ export class TagsView extends ItemView {
 			});
 			this.refresh();
 		} catch (err) {
-			console.error("[tagger] Failed to remove tag", err);
+			console.error("[Tagser] Failed to remove tag", err);
 		}
 	}
 }

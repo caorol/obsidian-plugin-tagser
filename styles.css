@@ -1,5 +1,5 @@
 /* ノート名: エディタの H1 と同系の色・サイズ（サイドバー用にマージンは抑える） */
-.tagger-view-root h1.tagger-note-name {
+.tagser-view-root h1.tagser-note-name {
 	margin: 0 0 0.5rem;
 	padding: 0;
 	border: none;
@@ -14,7 +14,7 @@
 }
 
 /* Properties ラベル: ノート見出し（H2）変数には追従せず UI タイポで固定 */
-.tagger-view-root .tagger-properties-header {
+.tagser-view-root .tagser-properties-header {
 	margin: 0 0 0.55rem;
 	padding: 0;
 	border: none;
@@ -31,7 +31,7 @@
 	min-width: 0;
 }
 
-.tagger-note-divider {
+.tagser-note-divider {
 	border: none;
 	border-top: 1px solid var(--background-modifier-border);
 	margin: 0 0 0.65rem;
@@ -39,33 +39,33 @@
 	height: 0;
 }
 
-.tagger-tags-hint {
+.tagser-tags-hint {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
 
 /* サイドバー内で子の幅がはみ出して折り返すのを防ぐ */
-.tagger-tags-body {
+.tagser-tags-body {
 	min-width: 0;
 	width: 100%;
 	box-sizing: border-box;
 }
 
-.tagger-properties-panel {
+.tagser-properties-panel {
 	min-width: 0;
 	width: 100%;
 	box-sizing: border-box;
 }
 
 /* tags 見出し・各行のプロパティ名で共通（下線なし） */
-.tagger-prop-name {
+.tagser-prop-name {
 	font-size: var(--font-ui-small);
 	font-weight: var(--font-semibold);
 	color: var(--text-muted);
 	text-decoration: none;
 }
 
-.tagger-properties {
+.tagser-properties {
 	margin-bottom: 0.5rem;
 	min-width: 0;
 	width: 100%;
@@ -74,7 +74,7 @@
 }
 
 /* flex + nowrap：プロパティは「キー | 値」を必ず1行（長い値は省略）。親テーマの div 折り返しに負けないよう root でスコープ */
-.tagger-view-root .tagger-properties .tagger-prop-row {
+.tagser-view-root .tagser-properties .tagser-prop-row {
 	display: flex !important;
 	flex-flow: row nowrap !important;
 	align-items: center;
@@ -92,7 +92,7 @@
 	line-height: 1.35;
 }
 
-.tagger-view-root .tagger-properties .tagger-prop-key {
+.tagser-view-root .tagser-properties .tagser-prop-key {
 	display: block !important;
 	flex: 0 1 auto;
 	min-width: 0;
@@ -105,7 +105,7 @@
 	overflow-wrap: normal !important;
 }
 
-.tagger-view-root .tagger-properties .tagger-prop-value {
+.tagser-view-root .tagser-properties .tagser-prop-value {
 	display: block !important;
 	flex: 1 1 0%;
 	min-width: 0;
@@ -119,13 +119,13 @@
 }
 
 /* tags の値だけバッジ表示（折り返し可）。行の max-height クリップは外す */
-.tagger-view-root .tagger-properties .tagger-prop-row.tagger-prop-row--tags {
+.tagser-view-root .tagser-properties .tagser-prop-row.tagser-prop-row--tags {
 	align-items: flex-start;
 	max-height: none;
 	overflow: visible;
 }
 
-.tagger-view-root .tagger-properties .tagger-prop-value.tagger-tags-value {
+.tagser-view-root .tagser-properties .tagser-prop-value.tagser-tags-value {
 	display: flex !important;
 	flex-flow: row wrap !important;
 	align-items: center;
@@ -135,24 +135,19 @@
 	overflow: visible;
 }
 
-/* 最後のタグの右側の空白をクリックしてタグを追加 */
-.tagger-tags-value-tail {
-	flex: 1 1 auto;
-	min-width: 1.5rem;
-	min-height: 1.65em;
-	align-self: stretch;
+/* 末尾の「追加」領域は中身が空だと幅 0 になりクリック不能になるため最小ヒット領域を確保 */
+.tagser-view-root .tagser-properties .tagser-tags-value-tail {
 	display: inline-flex;
 	align-items: center;
-	box-sizing: border-box;
+	align-self: center;
+	min-width: 1.1em;
+	min-height: 1.35em;
+	vertical-align: middle;
 	cursor: text;
-	border-radius: var(--radius-s, 4px);
+	box-sizing: border-box;
 }
 
-.tagger-tags-value-tail:hover:not(:has(.tagger-tag-edit-input)) {
-	background-color: var(--background-modifier-hover);
-}
-
-.tagger-tag-badge {
+.tagser-tag-badge {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.2rem;
@@ -168,7 +163,7 @@
 	vertical-align: middle;
 }
 
-.tagger-tag-badge-label {
+.tagser-tag-badge-label {
 	flex: 1 1 auto;
 	min-width: 0;
 	overflow: hidden;
@@ -177,7 +172,7 @@
 	cursor: text;
 }
 
-.tagger-tag-badge-remove {
+.tagser-tag-badge-remove {
 	flex: 0 0 auto;
 	margin-left: auto;
 	display: inline-flex;
@@ -200,18 +195,31 @@
 	-webkit-tap-highlight-color: transparent;
 }
 
-.tagger-tag-badge-remove:hover {
+.tagser-tag-badge-remove:hover {
 	color: var(--text-normal);
-	border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+	border-color: var(--background-modifier-border-hover);
 	background-color: var(--background-modifier-hover);
 }
 
-.tagger-tag-edit-input {
-	flex: 1 1 auto;
-	min-width: 3rem;
+/* 編集中はバッジ・追加入力枠が行幅いっぱいに伸びないようにする */
+.tagser-tag-badge:has(.tagser-tag-edit-input) {
+	flex: 0 1 auto;
 	max-width: 100%;
+	min-width: 0;
+}
+
+.tagser-tags-value-tail:has(.tagser-tag-edit-input) {
+	flex: 0 1 auto;
+	max-width: 100%;
+}
+
+.tagser-tag-edit-input {
+	flex: 0 0 auto;
+	width: auto;
+	min-width: 2ch;
+	max-width: min(100%, 32ch);
 	margin: 0;
-	padding: 0 0.15em;
+	padding: 0.1em 0.35em;
 	border: none;
 	border-radius: calc(var(--radius-s, 4px) - 1px);
 	background-color: var(--background-primary);
@@ -220,13 +228,16 @@
 	line-height: inherit;
 	box-sizing: border-box;
 	box-shadow: 0 0 0 1px var(--background-modifier-border);
+	/* Obsidian (Chromium): 中身の長さに合わせて幅が伸びる */
+	field-sizing: content;
 }
 
-.tagger-tags-value-tail .tagger-tag-edit-input {
-	flex: 1 1 auto;
-	min-width: 4rem;
-	max-width: 100%;
+.tagser-tag-edit-input:focus {
+	outline: none;
+	box-shadow: 0 0 0 2px var(--interactive-accent);
 }
+
+.tagser-muted {
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
