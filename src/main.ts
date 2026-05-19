@@ -68,6 +68,13 @@ export default class Tagger extends Plugin {
 				this.openTagsPanelIfMarkdownNote();
 			})
 		);
+		this.registerEvent(
+			this.app.metadataCache.on('changed', (file) => {
+				if (file === this.app.workspace.getActiveFile()) {
+					this.refreshTagsViews();
+				}
+			})
+		);
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new TaggerSettingTab(this.app, this));
