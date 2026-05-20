@@ -1,5 +1,8 @@
 # Tagser 
 This is an Obsidian plugin for editing the value of the `tags` property.
+When using this plugin, it is recommended to set:
+- Obsidian > Preferences > Editor > Display > Properties in document → Hidden
+This will make your notes easier to read.
 
 ## Install
 Please search for Tagser in the Obsidian settings screen and install it. 
