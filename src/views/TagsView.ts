@@ -3,6 +3,10 @@ import { DEFAULT_TAGS_PROPERTY_KEY } from "../constants";
 
 export const TAGSER_TAGS_VIEW_TYPE = "tagser-tags";
 
+/** 編集中スタイル用（CSS の :has 代替） */
+const CLS_TAG_BADGE_EDITING = "tagser-tag-badge--editing";
+const CLS_TAGS_TAIL_EDITING = "tagser-tags-value-tail--editing";
+
 /** プロパティ行を必ず1行に収める（YAML の複数行文字・改行を潰す） */
 function collapseForSingleLine(s: string): string {
 	return s.replace(/\r?\n|\r/g, " ").replace(/\s+/g, " ").trim();
@@ -323,6 +327,7 @@ export class TagsView extends ItemView {
 			return;
 		}
 		input.size = 5;
+		tail.classList.add(CLS_TAGS_TAIL_EDITING);
 
 		requestAnimationFrame(() => {
 			input.focus();
@@ -331,7 +336,10 @@ export class TagsView extends ItemView {
 
 	private cancelNewTag(input: HTMLInputElement): void {
 		const tail = input.closest(".tagser-tags-value-tail");
-		tail?.empty();
+		if (tail instanceof HTMLElement) {
+			tail.empty();
+			tail.classList.remove(CLS_TAGS_TAIL_EDITING);
+		}
 	}
 
 	private async commitNewTag(input: HTMLInputElement): Promise<void> {
@@ -377,6 +385,7 @@ export class TagsView extends ItemView {
 		}
 		input.value = tagText;
 		input.size = Math.max(3, Math.min(tagText.length + 2, 48));
+		badge.classList.add(CLS_TAG_BADGE_EDITING);
 
 		requestAnimationFrame(() => {
 			input.focus();
