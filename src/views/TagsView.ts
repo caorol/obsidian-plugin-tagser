@@ -296,20 +296,12 @@ export class TagsView extends ItemView {
 			return;
 		}
 
-		// tail が空だと幅 0 になり、クリックが親の値エリアに落ちる。バッジ外の値エリアクリックでも追加を開く
-		const tagsValueEl = target.closest(
-			".tagser-prop-row--tags .tagser-prop-value",
-		);
-		if (tagsValueEl instanceof HTMLElement && !target.closest(".tagser-tag-badge")) {
-			const tailEl = tagsValueEl.querySelector(
-				":scope > .tagser-tags-value-tail",
-			);
-			if (
-				tailEl instanceof HTMLElement &&
-				!tailEl.querySelector(".tagser-tag-edit-input")
-			) {
-				this.beginAddTag(tailEl);
-			}
+		const tailClicked = target.closest(".tagser-tags-value-tail");
+		if (
+			tailClicked instanceof HTMLElement &&
+			!tailClicked.querySelector(".tagser-tag-edit-input")
+		) {
+			this.beginAddTag(tailClicked);
 		}
 	}
 
