@@ -10,8 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: write 
+      contents: write
       attestations: write
+      # Required so attestations can create artifact metadata records (see actions/attest README)
+      artifact-metadata: write
     steps:
       - uses: actions/checkout@v3
 
